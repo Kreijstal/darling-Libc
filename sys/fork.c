@@ -32,6 +32,7 @@ extern pid_t __fork(void);
 static void (*_libSystem_atfork_prepare)(void) = 0;
 static void (*_libSystem_atfork_parent)(void) = 0;
 static void (*_libSystem_atfork_child)(void) = 0;
+static void (*_libSystem_atfork_failed)(void) = 0;
 
 __private_extern__
 void _libc_fork_init(const struct _libc_functions *funcs)
@@ -39,6 +40,7 @@ void _libc_fork_init(const struct _libc_functions *funcs)
 	_libSystem_atfork_prepare = funcs->atfork_prepare;
 	_libSystem_atfork_parent = funcs->atfork_parent;
 	_libSystem_atfork_child = funcs->atfork_child;
+	_libSystem_atfork_failed = (funcs->version >= 2) ? funcs->atfork_failed : 0;
 }
 
 /*
@@ -57,7 +59,12 @@ fork(void)
 	if (-1 == ret)
 	{
 		// __fork already set errno for us
-		_libSystem_atfork_parent();
+		int saved_errno = errno;
+		if (_libSystem_atfork_failed)
+			_libSystem_atfork_failed();
+		else
+			_libSystem_atfork_parent();
+		errno = saved_errno;
 		return ret;
 	}
 	
