@@ -53,9 +53,14 @@ __FBSDID("$FreeBSD$");
 static bool
 __kernel_supports_unionfs(void)
 {
-	/* Linux does not implement Darwin unionfs.
-	 * Disable unionfs support to prevent futile traversal and polluting errno. */
-	return false;
+	static int8_t kernel_supports_unionfs = -1;
+	if (kernel_supports_unionfs == -1) {
+		int value = 0;
+		size_t len = sizeof(value);
+		sysctlbyname("kern.secure_kernel", &value, &len, NULL, 0);
+		kernel_supports_unionfs = !value;
+	}
+	return kernel_supports_unionfs;
 }
 
 static int
@@ -79,6 +84,7 @@ static DIR * __opendir_common(int, int, bool);
 DIR *
 opendir(const char *name)
 {
+
 	return (__opendir2(name, DTF_HIDEW|DTF_NODUP));
 }
 
